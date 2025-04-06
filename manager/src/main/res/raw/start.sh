@@ -4,6 +4,7 @@ SOURCE_PATH="%%%STARTER_PATH%%%"
 STARTER_PATH="/data/local/tmp/shizuku_starter"
 
 echo "info: start.sh begin"
+pm grant moe.shizuku.privileged.api android.permission.WRITE_SECURE_SETTINGS
 
 recreate_tmp() {
   echo "info: /data/local/tmp is possible broken, recreating..."

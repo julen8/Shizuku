@@ -73,12 +73,15 @@ class StarterActivity : AppBarActivity() {
                     is AdbKeyException -> {
                         message = R.string.adb_error_key_store
                     }
+
                     is NotRootedException -> {
                         message = R.string.start_with_root_failed
                     }
+
                     is ConnectException -> {
                         message = R.string.cannot_connect_port
                     }
+
                     is SSLProtocolException -> {
                         message = R.string.adb_pair_required
                     }
@@ -103,7 +106,8 @@ class StarterActivity : AppBarActivity() {
     }
 }
 
-private class ViewModel(context: Context, root: Boolean, host: String?, port: Int) : androidx.lifecycle.ViewModel() {
+private class ViewModel(context: Context, root: Boolean, host: String?, port: Int) :
+    androidx.lifecycle.ViewModel() {
 
     private val sb = StringBuilder()
     private val _output = MutableLiveData<Resource<StringBuilder>>()
@@ -167,7 +171,7 @@ private class ViewModel(context: Context, root: Boolean, host: String?, port: In
         }
     }
 
-    private fun startAdb(host: String, port: Int) {
+    private fun startAdb(host: String, in_port: Int) {
         sb.append("Starting with wireless adb...").append('\n').append('\n')
         postResult()
 
@@ -182,7 +186,28 @@ private class ViewModel(context: Context, root: Boolean, host: String?, port: In
                 return@launch
             }
 
+            var port = in_port
+            if (port != 5555) {
+                try {
+                    sb.append("Change adb port $in_port to 5555").append('\n')
+                    postResult()
+                    val adb = AdbClient(host, port, key)
+                    adb.connect()
+                    adb.tcpip(5555)
+                    adb.close()
+                } catch (_: Exception) {
+                } finally {
+                    sb.append("Waiting 3 sec").append('\n')
+                    postResult()
+                    port = 5555
+                    Thread.sleep(1000 * 3)
+                }
+            }
+
+
             AdbClient(host, port, key).runCatching {
+                sb.append("Adb connecting $port ...").append('\n')
+                postResult()
                 connect()
                 shellCommand(Starter.sdcardCommand) {
                     sb.append(String(it))

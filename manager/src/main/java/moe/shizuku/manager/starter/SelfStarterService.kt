@@ -15,6 +15,7 @@ import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import moe.shizuku.manager.AppConstants
 import moe.shizuku.manager.BuildConfig
 import moe.shizuku.manager.ShizukuSettings
 import moe.shizuku.manager.adb.AdbClient
@@ -38,8 +39,13 @@ class SelfStarterService : Service(), LifecycleOwner {
         super.onCreate()
 
         val host = "127.0.0.1"
-        val startOnBootWirelessIsEnabled = ShizukuSettings.getPreferences().getBoolean(ShizukuSettings.KEEP_START_ON_BOOT_WIRELESS, false)
-        if (startOnBootWirelessIsEnabled && Settings.Global.getInt(this.contentResolver, "adb_wifi_enabled") == 1) {
+        val startOnBootWirelessIsEnabled = ShizukuSettings.getPreferences()
+            .getBoolean(ShizukuSettings.KEEP_START_ON_BOOT_WIRELESS, false)
+        if (startOnBootWirelessIsEnabled && Settings.Global.getInt(
+                this.contentResolver,
+                "adb_wifi_enabled"
+            ) == 1
+        ) {
             Starter.writeSdcardFiles(applicationContext)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -85,7 +91,7 @@ class SelfStarterService : Service(), LifecycleOwner {
             _output.postValue(Resource.error(throwable, sb))
     }
 
-    private fun startAdb(host: String, port: Int) {
+    private fun startAdb(host: String, in_port: Int) {
         sb.append("Starting with wireless adb...").append('\n').append('\n')
         postResult()
 
@@ -100,7 +106,24 @@ class SelfStarterService : Service(), LifecycleOwner {
                 return@launch
             }
 
+            var port = in_port
+            if (port != 5555) {
+                try {
+                    Log.i(AppConstants.TAG, "Change adb port $in_port to 5555")
+                    val adb = AdbClient(host, port, key)
+                    adb.connect()
+                    adb.tcpip(5555)
+                    adb.close()
+                } catch (_: Exception) {
+                } finally {
+                    Log.i(AppConstants.TAG, "Waiting 3 sec")
+                    port = 5555
+                    Thread.sleep(1000 * 3)
+                }
+            }
+
             AdbClient(host, port, key).runCatching {
+                Log.i(AppConstants.TAG, "Adb connect $port")
                 connect()
 
                 shellCommand(Starter.sdcardCommand) {
@@ -121,9 +144,9 @@ class SelfStarterService : Service(), LifecycleOwner {
              */
             if (sb.contains("/Android/data/${BuildConfig.APPLICATION_ID}/start.sh: Permission denied")) {
                 sb.append('\n')
-                        .appendLine("adb have no permission to access Android/data, how could this possible ?!")
-                        .appendLine("try /data/user_de instead...")
-                        .appendLine()
+                    .appendLine("adb have no permission to access Android/data, how could this possible ?!")
+                    .appendLine("try /data/user_de instead...")
+                    .appendLine()
                 postResult()
 
                 Starter.writeDataFiles(moe.shizuku.manager.application, true)

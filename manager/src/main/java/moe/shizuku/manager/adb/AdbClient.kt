@@ -80,6 +80,11 @@ class AdbClient(private val host: String, private val port: Int, private val key
         if (message.command != A_CNXN) error("not A_CNXN")
     }
 
+    fun tcpip(port: Int) {
+        val localId = 1
+        write(A_OPEN, localId, 0, "tcpip:$port")
+    }
+
     fun shellCommand(command: String, listener: ((ByteArray) -> Unit)?) {
         val localId = 1
         write(A_OPEN, localId, 0, "shell:$command")
