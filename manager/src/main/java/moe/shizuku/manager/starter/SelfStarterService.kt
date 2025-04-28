@@ -91,7 +91,7 @@ class SelfStarterService : Service(), LifecycleOwner {
             _output.postValue(Resource.error(throwable, sb))
     }
 
-    private fun startAdb(host: String, in_port: Int) {
+    private fun startAdb(host: String, port: Int) {
         sb.append("Starting with wireless adb...").append('\n').append('\n')
         postResult()
 
@@ -104,22 +104,6 @@ class SelfStarterService : Service(), LifecycleOwner {
 
                 postResult(AdbKeyException(e))
                 return@launch
-            }
-
-            var port = in_port
-            if (port != 5555) {
-                try {
-                    Log.i(AppConstants.TAG, "Change adb port $in_port to 5555")
-                    val adb = AdbClient(host, port, key)
-                    adb.connect()
-                    adb.tcpip(5555)
-                    adb.close()
-                } catch (_: Exception) {
-                } finally {
-                    Log.i(AppConstants.TAG, "Waiting 3 sec")
-                    port = 5555
-                    Thread.sleep(1000 * 3)
-                }
             }
 
             AdbClient(host, port, key).runCatching {
@@ -164,6 +148,22 @@ class SelfStarterService : Service(), LifecycleOwner {
                     sb.append('\n').append(Log.getStackTraceString(it))
                     postResult(it)
                 }
+            }
+
+            if (port != 5555) {
+                try {
+                    Log.i(AppConstants.TAG, "Change adb port $port to 5555")
+                    val adb = AdbClient(host, port, key)
+                    adb.connect()
+                    adb.tcpip(5555)
+                    adb.close()
+                } catch (_: Exception) {
+                } finally {
+                    Log.i(AppConstants.TAG, "Waiting 3 sec")
+                    Thread.sleep(1000 * 3)
+                }
+
+                startAdb(host, 5555)
             }
         }
     }

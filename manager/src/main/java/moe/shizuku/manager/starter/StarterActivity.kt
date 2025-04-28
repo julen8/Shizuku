@@ -171,7 +171,7 @@ private class ViewModel(context: Context, root: Boolean, host: String?, port: In
         }
     }
 
-    private fun startAdb(host: String, in_port: Int) {
+    private fun startAdb(host: String, port: Int) {
         sb.append("Starting with wireless adb...").append('\n').append('\n')
         postResult()
 
@@ -185,25 +185,6 @@ private class ViewModel(context: Context, root: Boolean, host: String?, port: In
                 postResult(AdbKeyException(e))
                 return@launch
             }
-
-            var port = in_port
-            if (port != 5555) {
-                try {
-                    sb.append("Change adb port $in_port to 5555").append('\n')
-                    postResult()
-                    val adb = AdbClient(host, port, key)
-                    adb.connect()
-                    adb.tcpip(5555)
-                    adb.close()
-                } catch (_: Exception) {
-                } finally {
-                    sb.append("Waiting 3 sec").append('\n')
-                    postResult()
-                    port = 5555
-                    Thread.sleep(1000 * 3)
-                }
-            }
-
 
             AdbClient(host, port, key).runCatching {
                 sb.append("Adb connecting $port ...").append('\n')
@@ -247,6 +228,24 @@ private class ViewModel(context: Context, root: Boolean, host: String?, port: In
                     sb.append('\n').append(Log.getStackTraceString(it))
                     postResult(it)
                 }
+            }
+
+            if (port != 5555) {
+                try {
+                    sb.append("Change adb port $port to 5555").append('\n')
+                    postResult()
+                    val adb = AdbClient(host, port, key)
+                    adb.connect()
+                    adb.tcpip(5555)
+                    adb.close()
+                } catch (_: Exception) {
+                } finally {
+                    sb.append("Waiting 3 sec").append('\n')
+                    postResult()
+                    Thread.sleep(1000 * 3)
+                }
+
+                startAdb(host, 5555)
             }
         }
     }
